@@ -439,6 +439,45 @@ function toggleTheme() {
    ========================================================= */
 let workingQuestions = [];
 let editingId = null;
+let editorUnlocked = false; // set true only after the correct access code is entered
+
+// The access code is stored hashed (not as plaintext) so it isn't exposed by
+// "View Source". NOTE: this is client-side only — it stops casual bypass, not a
+// determined attacker with DevTools. Real protection needs a backend.
+function hashCode(str) {
+    let h = 0;
+    for (let i = 0; i < str.length; i++) {
+        h = (h << 5) - h + str.charCodeAt(i);
+        h |= 0;
+    }
+    return h;
+}
+const EDIT_CODE_HASH = hashCode('20092010');
+
+function promptEditorCode() {
+    if (editorUnlocked) { openEditor(); return; }
+    document.getElementById('code-input').value = '';
+    document.getElementById('code-error').style.display = 'none';
+    document.getElementById('code-modal').style.display = 'flex';
+    setTimeout(() => document.getElementById('code-input').focus(), 50);
+}
+
+function closeCodeModal() {
+    document.getElementById('code-modal').style.display = 'none';
+}
+
+function submitEditorCode() {
+    const input = document.getElementById('code-input').value;
+    if (hashCode(input) === EDIT_CODE_HASH) {
+        editorUnlocked = true;
+        closeCodeModal();
+        openEditor();
+    } else {
+        document.getElementById('code-error').style.display = 'block';
+        document.getElementById('code-input').value = '';
+        document.getElementById('code-input').focus();
+    }
+}
 
 function escapeHtml(str) {
     return String(str).replace(/[&<>"']/g, c =>
@@ -446,6 +485,11 @@ function escapeHtml(str) {
 }
 
 function openEditor() {
+    // Gate: never open the editor unless the access code was entered this session.
+    if (!editorUnlocked) {
+        promptEditorCode();
+        return;
+    }
     if (!quizData || !quizData.questions) {
         alert('Quiz is still loading, please wait a moment.');
         return;

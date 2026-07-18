@@ -521,6 +521,15 @@ header .subtitle {
 .modal-actions { display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
 .modal-actions .btn { flex: 1; min-width: 130px; }
 
+.code-modal { max-width: 380px; text-align: center; }
+.code-input {
+    width: 100%; font-family: inherit; font-size: 1.1rem; letter-spacing: 0.15em;
+    padding: 12px 14px; border: 2px solid var(--border); border-radius: var(--radius-sm);
+    background: var(--card-bg); color: var(--text); text-align: center; transition: var(--transition);
+}
+.code-input:focus { outline: none; border-color: var(--primary); }
+.code-error { color: var(--danger); font-weight: 600; font-size: 0.9rem; margin: 4px 0 0; }
+
 @media (max-width: 520px) {
     .form-row { grid-template-columns: 1fr; }
     .q-text { white-space: normal; }

@@ -47,7 +47,7 @@
                 </div>
 
                 <button onclick="startQuiz()" class="btn btn-primary btn-large">Start Quiz ▶</button>
-                <button onclick="openEditor()" class="btn btn-ghost btn-large editor-open-btn">✏️ Edit Questions</button>
+                <button onclick="promptEditorCode()" class="btn btn-ghost btn-large editor-open-btn">✏️ Edit Questions</button>
             </section>
 
             <!-- Editor Screen -->
@@ -97,6 +97,24 @@
                     <div class="modal-actions">
                         <button class="btn btn-primary" onclick="saveQuestion()">Save Question</button>
                         <button class="btn btn-ghost" onclick="closeQuestionForm()">Cancel</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Access code modal (gates the editor) -->
+            <div id="code-modal" class="modal-overlay" style="display:none;">
+                <div class="modal-backdrop" onclick="closeCodeModal()"></div>
+                <div class="modal code-modal" role="dialog" aria-modal="true" aria-labelledby="code-title">
+                    <h3 id="code-title">🔒 Editor locked</h3>
+                    <p class="hint-small">Enter the access code to edit questions.</p>
+                    <div class="form-group">
+                        <input type="password" id="code-input" class="code-input" placeholder="Access code"
+                               autocomplete="off" onkeydown="if(event.key==='Enter')submitEditorCode()">
+                    </div>
+                    <p id="code-error" class="code-error" style="display:none;">Incorrect code. Try again.</p>
+                    <div class="modal-actions">
+                        <button class="btn btn-primary" onclick="submitEditorCode()">Unlock</button>
+                        <button class="btn btn-ghost" onclick="closeCodeModal()">Cancel</button>
                     </div>
                 </div>
             </div>
@@ -162,7 +180,7 @@
 
         <footer class="site-footer">
             <p>Based on <em>The Curious Incident of the Dog in the Night-Time</em> by Mark Haddon</p>
-            <button class="link-btn" onclick="openEditor()">✏️ Edit questions</button>
+            <button class="link-btn" onclick="promptEditorCode()">✏️ Edit questions</button>
         </footer>
     </div>
 
