@@ -412,9 +412,10 @@ function renderLeaderboardInto(listId, bestId, entries, username) {
     }
 }
 
-// Record a finished run. With a Supabase backend configured, the score is inserted
-// into the shared table so everyone sees it (worldwide sync). Otherwise it is kept
-// locally in this browser only.
+// Record a finished run. A user (by username) keeps only their best score: a new
+// run replaces the previous one only when it is higher, otherwise the old score
+// stays. With a Supabase backend configured this is a worldwide-synced upsert;
+// otherwise it is kept locally in this browser only.
 async function submitScore(score, difficulty) {
     const username = getUsername() || 'Anonymous';
     const entry = {
@@ -425,24 +426,37 @@ async function submitScore(score, difficulty) {
 
     const { url, key } = lbConfig();
     if (url && key) {
+        const headers = {
+            'apikey': key,
+            'Authorization': 'Bearer ' + key,
+            'Content-Type': 'application/json'
+        };
         try {
-            await fetch(`${url}/rest/v1/${LEADERBOARD_CONFIG.table}`, {
-                method: 'POST',
-                headers: {
-                    'apikey': key,
-                    'Authorization': 'Bearer ' + key,
-                    'Content-Type': 'application/json',
-                    'Prefer': 'return=minimal'
-                },
-                body: JSON.stringify([entry])
-            });
+            // Look up this user's current best, then only upsert when the new run is higher.
+            const existingRes = await fetch(
+                `${url}/rest/v1/${LEADERBOARD_CONFIG.table}` +
+                `?select=score&name=eq.${encodeURIComponent(username)}`,
+                { headers }
+            );
+            const existing = existingRes.ok ? await existingRes.json() : [];
+            const prev = existing.length ? existing[0].score : -1;
+            if (prev === -1 || entry.score > prev) {
+                await fetch(`${url}/rest/v1/${LEADERBOARD_CONFIG.table}?on_conflict=name`, {
+                    method: 'POST',
+                    headers: { ...headers, 'Prefer': 'resolution=merge-duplicates' },
+                    body: JSON.stringify([entry])
+                });
+            }
         } catch (e) {
             console.warn('Score submission failed:', e);
         }
     } else {
+        // Local-only: keep only this user's best run.
         let local = [];
         try { local = JSON.parse(localStorage.getItem('quizLocalScores') || '[]'); } catch (e) { /* ignore */ }
-        local.push(entry);
+        const idx = local.findIndex(e => e.name === username);
+        if (idx === -1) local.push(entry);
+        else if (entry.score > local[idx].score) local[idx] = entry;
         if (local.length > 50) local = local.slice(-50);
         localStorage.setItem('quizLocalScores', JSON.stringify(local));
     }

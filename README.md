@@ -54,7 +54,7 @@ screen to edit it. Ranks are prime numbers (#2, #3, #5, #7, …).
    ```sql
    create table if not exists public.leaderboard (
      id bigint generated always as identity primary key,
-     name text not null,
+     name text not null unique,   -- one row per player; upsert keeps each user's best
      score integer not null,
      difficulty text default 'mixed',
      created_at timestamptz default now()
@@ -62,15 +62,20 @@ screen to edit it. Ranks are prime numbers (#2, #3, #5, #7, …).
    alter table public.leaderboard enable row level security;
    create policy "Public read"   on public.leaderboard for select using (true);
    create policy "Public insert" on public.leaderboard for insert with check (true);
+   create policy "Public update" on public.leaderboard for update using (true) with check (true);
    ```
+
+   > The `unique` on `name` plus the update policy let the app upsert: a player's
+   > new score replaces the old one only when it is higher; otherwise the previous
+   > score is kept.
 
 3. In **Project Settings → API**, copy the Project URL and the `anon` public key.
 4. Set them in `script.js` → `LEADERBOARD_CONFIG.supabaseUrl` / `supabaseKey`
    (or at runtime via `localStorage['quizSupabaseUrl']` / `localStorage['quizSupabaseKey']`).
 
 The `anon` key is safe to expose — Row Level Security above controls access (public
-read + insert). For a production board you'd add rate limiting / validation and
-probably require a login.
+read + insert + update). For a production board you'd add rate limiting / validation
+and probably require a login.
 
 **Without Supabase configured**, the board falls back to a local-only mode: it reads
 `leaderboard.json` (empty by default) and stores your runs in `localStorage`, so the
