@@ -9,12 +9,32 @@ let score = 0;
 let selectedQuestions = [];
 let timePerQuestion = 30;
 let timerInterval;
+let timeRemaining = 0; // seconds left on the current question, used for time-based scoring
 let lifelines = { hint: true, fifty: true, skip: true };
 let currentDifficulty = 'mixed';
 let streak = 0;
 let highScore = localStorage.getItem('highScore') || 0;
 let currentCorrectIndex = 0; // display position of the correct answer for the current question
 const STORAGE_KEY = 'quizQuestionsOverride'; // user-edited questions
+
+// Simulated "world" leaderboard. This static site has no backend, so the
+// global ranks are seeded with fictional players and the player's own run is
+// merged in at render time. Swap WORLD_PLAYERS + renderLeaderboard() for a real
+// API call to make the board genuinely global.
+const WORLD_PLAYERS = [
+    { name: 'DetectiveDoyle', score: 173 },
+    { name: 'PrimePi',        score: 161 },
+    { name: 'SherlockFan',    score: 152 },
+    { name: 'RiddleReader',   score: 144 },
+    { name: 'BookwormBex',    score: 138 },
+    { name: 'QuizzicalQ',     score: 129 },
+    { name: 'NightOwl',       score: 117 },
+    { name: 'ChapterChaser',  score: 108 },
+    { name: 'TobyTheRat',     score: 96  },
+    { name: 'SwindonSky',     score: 84  },
+    { name: 'NewcomerN',      score: 71  },
+    { name: 'CuriousCat',     score: 58  }
+];
 
 const questionsDiv = document.getElementById('questions');
 const scoreSpan = document.getElementById('score');
@@ -163,10 +183,10 @@ function startTimer() {
     timerBar.style.transition = `width ${timePerQuestion}s linear, background 0.4s linear`;
     timerBar.style.width = '0%';
 
-    let secondsLeft = timePerQuestion;
+    timeRemaining = timePerQuestion;
     timerInterval = setInterval(() => {
-        secondsLeft--;
-        const percentage = (secondsLeft / timePerQuestion) * 100;
+        timeRemaining--;
+        const percentage = (timeRemaining / timePerQuestion) * 100;
 
         // Change color based on time remaining.
         if (percentage > 50) {
@@ -178,7 +198,7 @@ function startTimer() {
         }
         timerBar.setAttribute('aria-valuenow', String(Math.max(0, Math.round(percentage))));
 
-        if (secondsLeft <= 0) {
+        if (timeRemaining <= 0) {
             clearInterval(timerInterval);
             timeOut();
         }
@@ -215,15 +235,19 @@ function checkAnswer(selectedIndex) {
         }
     });
 
-    // Calculate score
+    // Calculate score — the faster you answer, the more points you earn.
+    // The share of time left when you answer scales the award from 10 (answered
+    // instantly) down to 1 (answered on the last second).
     if (isCorrect) {
-        score += 10;
+        const fraction = Math.max(0, timeRemaining) / timePerQuestion;
+        const earned = Math.max(1, Math.round(10 * fraction));
+        score += earned;
         streak++;
         if (streak >= 3 && streak % 3 === 0) {
             score += 5; // Streak bonus
-            announce('Correct! Streak bonus +5 points.');
+            announce(`Correct! +${earned} points and a streak bonus of +5.`);
         } else {
-            announce('Correct!');
+            announce(`Correct! +${earned} points.`);
         }
     } else {
         streak = 0;
@@ -288,9 +312,59 @@ function showResults() {
     }
     document.getElementById('performance-text').textContent = performanceText;
 
+    // Render the (simulated) world leaderboard with this run included.
+    renderLeaderboard(score);
+
     // Confetti for high scores
     if (percentage >= 70) {
         launchConfetti();
+    }
+}
+
+// Return the n-th prime (1-based): 1->2, 2->3, 3->5, ... Used so leaderboard
+// ranks are prime numbers instead of 1, 2, 3, ...
+let _primes = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47];
+function nthPrime(n) {
+    while (_primes.length < n) {
+        let cand = _primes[_primes.length - 1] + 1;
+        while (true) {
+            let isPrime = true;
+            for (const p of _primes) {
+                if (p * p > cand) break;
+                if (cand % p === 0) { isPrime = false; break; }
+            }
+            if (isPrime) { _primes.push(cand); break; }
+            cand++;
+        }
+    }
+    return _primes[n - 1];
+}
+
+// Build the leaderboard: merge the player's run into the seeded world players,
+// sort by score, and render the top entries with prime-numbered ranks.
+function renderLeaderboard(playerScore) {
+    const list = document.getElementById('lb-list');
+    if (!list) return;
+
+    const entries = WORLD_PLAYERS.map(p => ({ name: p.name, score: p.score, you: false }));
+    entries.push({ name: 'You', score: playerScore, you: true });
+    entries.sort((a, b) => b.score - a.score);
+
+    const top = entries.slice(0, 10);
+    list.innerHTML = top.map((e, i) => `
+        <li class="lb-row${e.you ? ' lb-you' : ''}">
+            <span class="lb-rank">#${nthPrime(i + 1)}</span>
+            <span class="lb-name">${escapeHtml(e.name)}</span>
+            <span class="lb-score">${e.score}</span>
+        </li>
+    `).join('');
+
+    // Persist and show the player's personal best.
+    const bestEl = document.getElementById('lb-best');
+    if (bestEl) {
+        const best = Number(localStorage.getItem('quizBest') || 0);
+        if (playerScore > best) localStorage.setItem('quizBest', playerScore);
+        bestEl.textContent = `Your best: ${Math.max(playerScore, best)}`;
     }
 }
 

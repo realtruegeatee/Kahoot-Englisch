@@ -6,7 +6,9 @@ An interactive Kahoot-style quiz website for *The Curious Incident of the Dog in
 
 - **Multiple difficulty levels** (Easy, Medium, Hard)
 - **Timer system** with visual countdown
+- **Time-based scoring** — answer fast to earn up to 10 points; the longer you take, the fewer points you get
 - **Score tracking** with streak bonuses
+- **World leaderboard** with prime-numbered ranks (#2, #3, #5, #7, …) — simulated client-side; swap in a real API for a global board
 - **Lifelines** (Hint −5, 50/50 −10, Skip −15 points) — each costs points, so use them strategically
 - **Responsive design** for mobile and desktop
 - **Confetti animation** for high scores
