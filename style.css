@@ -74,14 +74,15 @@ body::before {
     transform: scale(1.12); /* overscan so blurred edges don't show gaps */
 }
 
-/* Tint overlay keeps text readable over the cover (light + dark mode) */
+/* Tint overlay keeps text readable over the cover (light + dark mode).
+   Kept fairly low so the blurred book cover stays clearly visible. */
 body::after {
     content: "";
     position: fixed;
     inset: 0;
     z-index: -1;
     background: linear-gradient(160deg, var(--bg-1) 0%, var(--bg-2) 100%);
-    opacity: 0.82;
+    opacity: 0.5;
 }
 
 /* Visually hidden but available to screen readers */
