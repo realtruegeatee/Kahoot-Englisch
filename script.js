@@ -24,6 +24,11 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initQuiz() {
+    // Reset screens to start screen
+    document.getElementById('start-screen').style.display = 'block';
+    document.getElementById('quiz-screen').style.display = 'none';
+    document.getElementById('results').style.display = 'none';
+
     fetch('quiz_data.json')
         .then(response => response.json())
         .then(data => {
@@ -33,15 +38,23 @@ function initQuiz() {
             streak = 0;
             lifelines = { hint: true, fifty: true, skip: true };
             hintUsed = false;
+            document.getElementById('score').textContent = '0';
         })
         .catch(err => console.error('Error loading quiz:', err));
 }
 
-function selectDifficulty(difficulty) {
+function selectDifficulty(difficulty, evt) {
     currentDifficulty = difficulty;
     const buttons = document.querySelectorAll('.difficulty-btn');
-    buttons.forEach(btn => btn.classList.remove('active'));
-    event.target.classList.add('active');
+    buttons.forEach(btn => {
+        btn.classList.remove('active');
+        btn.setAttribute('aria-checked', 'false');
+    });
+    const target = evt ? evt.currentTarget : null;
+    if (target) {
+        target.classList.add('active');
+        target.setAttribute('aria-checked', 'true');
+    }
 
     // Update settings based on difficulty
     if (difficulty === 'easy') timePerQuestion = 30;
@@ -90,9 +103,13 @@ function showQuestion() {
     const category = q.category ? q.category : 'General';
     const difficulty = q.difficulty ? q.difficulty : 'mixed';
 
-    // Create options HTML
+    // Create options HTML with letter badges (A, B, C, D)
+    const letters = ['A', 'B', 'C', 'D'];
     const optionsHtml = q.options.map((opt, i) =>
-        `<button class="option" onclick="checkAnswer(${i})" data-index="${i}">${opt}</button>`
+        `<button class="option" onclick="checkAnswer(${i})" data-index="${i}">
+            <span class="opt-badge">${letters[i]}</span>
+            <span class="opt-text">${opt}</span>
+        </button>`
     ).join('');
 
     // Update progress
@@ -171,6 +188,7 @@ function checkAnswer(selectedIndex) {
     }
 
     scoreSpan.textContent = score;
+    bumpScore();
     updateLifelineButtons();
 
     // Move to next question
@@ -205,6 +223,8 @@ function showResults() {
         highScore = score;
         localStorage.setItem('highScore', highScore);
     }
+
+    resetProgress();
 
     document.getElementById('quiz-screen').style.display = 'none';
     document.getElementById('results').style.display = 'block';
@@ -264,7 +284,7 @@ function useFiftyFifty() {
     // Disable wrong answers
     wrongIndices.forEach(i => {
         buttons[i].disabled = true;
-        buttons[i].style.opacity = '0.3';
+        buttons[i].classList.add('dimmed');
         buttons[i].style.cursor = 'not-allowed';
     });
 
@@ -363,3 +383,37 @@ window.addEventListener('beforeunload', () => {
 function resetProgress() {
     localStorage.removeItem('quizProgress');
 }
+
+// Score bump animation on the HUD
+function bumpScore() {
+    const scoreEl = document.querySelector('.hud-score');
+    if (!scoreEl) return;
+    scoreEl.classList.remove('bump');
+    void scoreEl.offsetWidth; // reflow to restart animation
+    scoreEl.classList.add('bump');
+}
+
+// Theme toggle (persisted in localStorage)
+function toggleTheme() {
+    const root = document.documentElement;
+    const isDark = root.getAttribute('data-theme') === 'dark';
+    const next = isDark ? 'light' : 'dark';
+    if (next === 'dark') {
+        root.setAttribute('data-theme', 'dark');
+    } else {
+        root.removeAttribute('data-theme');
+    }
+    localStorage.setItem('theme', next);
+    const icon = document.getElementById('theme-icon');
+    if (icon) icon.textContent = next === 'dark' ? '☀️' : '🌙';
+}
+
+// Apply saved theme on load
+(function applySavedTheme() {
+    const saved = localStorage.getItem('theme');
+    const icon = document.getElementById('theme-icon');
+    if (saved === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        if (icon) icon.textContent = '☀️';
+    }
+})();

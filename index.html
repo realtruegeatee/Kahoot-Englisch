@@ -2,51 +2,68 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="description" content="Interactive quiz about The Curious Incident of the Dog in the Night-Time by Mark Haddon">
+    <meta name="theme-color" content="#6c5ce7">
     <title>Curious Incident Quiz</title>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="confetti" id="confetti"></div>
+    <div class="confetti" id="confetti" aria-hidden="true"></div>
+
+    <button class="theme-toggle" aria-label="Toggle dark mode" onclick="toggleTheme()" title="Toggle dark mode">
+        <span id="theme-icon">🌙</span>
+    </button>
 
     <div class="container">
-        <button class="theme-toggle" aria-label="Toggle dark mode" onclick="toggleTheme()">Dark Mode</button>
-
         <header>
-            <h1>The Curious Incident of the Dog in the Night-Time Quiz</h1>
-            <p class="subtitle">Test your knowledge about Christopher Boone's incredible journey</p>
+            <div class="header-badge">📚 Book Quiz</div>
+            <h1>The Curious Incident<br>of the Dog in the Night-Time</h1>
+            <p class="subtitle">Test your knowledge of Christopher Boone's incredible journey</p>
         </header>
 
         <main id="quiz-container">
             <!-- Start Screen -->
             <section id="start-screen">
-                <h2>Welcome to the Quiz!</h2>
-                <p>Select your difficulty level and test your knowledge.</p>
+                <h2 class="screen-title">Ready to play?</h2>
+                <p class="screen-sub">Pick a difficulty and dive into the mystery.</p>
 
                 <div class="difficulty-selector" role="radiogroup" aria-label="Select difficulty level">
-                    <button class="difficulty-btn active" data-difficulty="easy" onclick="selectDifficulty('easy')" aria-checked="true">Easy</button>
-                    <button class="difficulty-btn" data-difficulty="medium" onclick="selectDifficulty('medium')" aria-checked="false">Medium</button>
-                    <button class="difficulty-btn" data-difficulty="hard" data-difficulty="hard" onclick="selectDifficulty('hard')" aria-checked="false">Hard</button>
-                    <button class="difficulty-btn" data-difficulty="mixed" onclick="selectDifficulty('mixed')" aria-checked="false">Mixed</button>
+                    <button class="difficulty-btn active" data-difficulty="easy" onclick="selectDifficulty('easy', event)" role="radio" aria-checked="true">
+                        <span class="diff-emoji">😊</span><span class="diff-label">Easy</span>
+                    </button>
+                    <button class="difficulty-btn" data-difficulty="medium" onclick="selectDifficulty('medium', event)" role="radio" aria-checked="false">
+                        <span class="diff-emoji">🤔</span><span class="diff-label">Medium</span>
+                    </button>
+                    <button class="difficulty-btn" data-difficulty="hard" onclick="selectDifficulty('hard', event)" role="radio" aria-checked="false">
+                        <span class="diff-emoji">🤯</span><span class="diff-label">Hard</span>
+                    </button>
+                    <button class="difficulty-btn" data-difficulty="mixed" onclick="selectDifficulty('mixed', event)" role="radio" aria-checked="false">
+                        <span class="diff-emoji">🎲</span><span class="diff-label">Mixed</span>
+                    </button>
                 </div>
 
-                <button onclick="startQuiz()" class="btn">Start Quiz</button>
+                <button onclick="startQuiz()" class="btn btn-primary btn-large">Start Quiz ▶</button>
             </section>
 
             <!-- Quiz Screen -->
             <section id="quiz-screen" style="display: none;">
-                <div class="progress-indicator">
-                    <div class="progress-stats">
-                        <span>Question <span id="current-q">1</span>/<span id="total-q">15</span></span>
-                        <span>Score: <span id="score">0</span></span>
+                <div class="hud">
+                    <div class="hud-item">
+                        <span class="hud-label">Question</span>
+                        <span class="hud-value"><span id="current-q">1</span><span class="hud-muted">/<span id="total-q">15</span></span></span>
                     </div>
-                    <div class="progress-bar-container">
-                        <div class="progress-bar" id="progress" style="width: 6%"></div>
+                    <div class="hud-item hud-score">
+                        <span class="hud-label">Score</span>
+                        <span class="hud-value" id="score">0</span>
                     </div>
+                </div>
+
+                <div class="progress-bar-container">
+                    <div class="progress-bar" id="progress" style="width: 6%"></div>
                 </div>
 
                 <div class="timer-container" aria-label="Time remaining">
@@ -54,14 +71,14 @@
                 </div>
 
                 <div class="lifelines" aria-label="Available lifelines">
-                    <button class="lifeline-btn" id="hint-btn" onclick="useHint()" aria-label="Use hint (costs points)">
-                        💡 Hint
+                    <button class="lifeline-btn" id="hint-btn" onclick="useHint()" aria-label="Use hint">
+                        <span class="life-emoji">💡</span><span class="life-label">Hint</span>
                     </button>
                     <button class="lifeline-btn" id="fifty-btn" onclick="useFiftyFifty()" aria-label="Remove two wrong answers">
-                        🔥 50/50
+                        <span class="life-emoji">🔥</span><span class="life-label">50/50</span>
                     </button>
                     <button class="lifeline-btn" id="skip-btn" onclick="skipQuestion()" aria-label="Skip this question">
-                        ⏭ Skip
+                        <span class="life-emoji">⏭️</span><span class="life-label">Skip</span>
                     </button>
                 </div>
 
@@ -76,12 +93,12 @@
             <!-- Results Screen -->
             <section id="results" aria-label="Quiz Results">
                 <div class="achievement-badge" role="img" aria-label="Achievement Badge">🎉</div>
-                <h2>Quiz Complete!</h2>
+                <h2 class="screen-title">Quiz Complete!</h2>
                 <div class="score-display">
-                    <span id="final-score">0</span>/<span id="final-total">15</span>
+                    <span id="final-score">0</span><span class="score-total">/<span id="final-total">15</span></span>
                 </div>
-                <p id="performance-text"></p>
-                <button onclick="initQuiz()" class="btn">Play Again</button>
+                <p id="performance-text" class="performance-text"></p>
+                <button onclick="initQuiz()" class="btn btn-primary btn-large">Play Again ↻</button>
             </section>
 
             <!-- Loading -->
@@ -90,6 +107,10 @@
                 <p>Loading quiz...</p>
             </div>
         </main>
+
+        <footer class="site-footer">
+            <p>Based on <em>The Curious Incident of the Dog in the Night-Time</em> by Mark Haddon</p>
+        </footer>
     </div>
 
     <script src="script.js" defer></script>
