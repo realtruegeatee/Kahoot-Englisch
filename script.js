@@ -357,7 +357,7 @@ async function loadAndRenderLeaderboard() {
             const res = await fetch(
                 `${url}/rest/v1/${LEADERBOARD_CONFIG.table}` +
                 `?select=name,score,difficulty&order=score.desc`,
-                { headers: { 'apikey': key, 'Authorization': 'Bearer ' + key } }
+                { headers: { 'apikey': key, 'Authorization': 'Bearer ' + key }, cache: 'no-store' }
             );
             if (res.ok) entries = await res.json();
         } catch (e) {
@@ -436,7 +436,7 @@ async function submitScore(score, difficulty) {
             const existingRes = await fetch(
                 `${url}/rest/v1/${LEADERBOARD_CONFIG.table}` +
                 `?select=score&name=eq.${encodeURIComponent(username)}`,
-                { headers }
+                { headers, cache: 'no-store' }
             );
             const existing = existingRes.ok ? await existingRes.json() : [];
             const prev = existing.length ? existing[0].score : -1;
