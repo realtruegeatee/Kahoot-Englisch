@@ -64,6 +64,17 @@ body {
     padding-bottom: env(safe-area-inset-bottom);
 }
 
+/* Visually hidden but available to screen readers */
+.sr-only {
+    position: absolute;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
 .container {
     max-width: 760px;
     margin: 0 auto;
@@ -307,6 +318,7 @@ header .subtitle {
 }
 .lifeline-btn .life-emoji { font-size: 1.3rem; }
 .lifeline-btn .life-label { font-size: 0.82rem; }
+.lifeline-btn .life-cost { font-size: 0.68rem; font-weight: 700; opacity: 0.8; margin-top: 1px; }
 .lifeline-btn:hover:not(:disabled) { border-color: var(--warning); transform: translateY(-2px); box-shadow: var(--shadow-sm); }
 .lifeline-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .lifeline-btn:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
@@ -421,6 +433,22 @@ header .subtitle {
 .option.incorrect .opt-badge { background: rgba(255,255,255,0.25) !important; color: #fff; }
 .option:disabled { cursor: default; }
 .option.dimmed { opacity: 0.35; }
+
+/* Answer feedback animations (added by JS on reveal) */
+.option.pulse-correct { animation: pulse-correct 0.55s ease; }
+.option.shake-wrong { animation: shake-wrong 0.45s ease; }
+@keyframes pulse-correct {
+    0%   { box-shadow: 0 0 0 0 rgba(0, 184, 148, 0.55); transform: scale(1); }
+    50%  { box-shadow: 0 0 0 14px rgba(0, 184, 148, 0); transform: scale(1.03); }
+    100% { box-shadow: 0 0 0 0 rgba(0, 184, 148, 0); transform: scale(1); }
+}
+@keyframes shake-wrong {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-7px); }
+    40% { transform: translateX(7px); }
+    60% { transform: translateX(-5px); }
+    80% { transform: translateX(5px); }
+}
 
 /* ---------- Results ---------- */
 #results { text-align: center; padding: 20px 0; display: none; animation: fadeIn 0.5s ease; }
@@ -597,6 +625,25 @@ header .subtitle {
 @media (max-width: 380px) {
     .difficulty-btn .diff-label { font-size: 0.72rem; }
     .lifeline-btn .life-label { font-size: 0.74rem; }
+}
+
+/* Small phones: tighten spacing so the whole quiz (header, HUD, timer,
+   lifelines and 2x2 options) fits without scrolling and stays tappable. */
+@media (max-width: 480px) {
+    header { padding: 14px 0 6px; }
+    header h1 { font-size: clamp(1.35rem, 6.2vw, 1.9rem); }
+    .subtitle { margin-bottom: 2px; }
+    .screen-title { font-size: 1.4rem; margin-bottom: 4px; }
+    .screen-sub { margin-bottom: 16px; }
+    .difficulty-selector { margin-bottom: 18px; }
+    .difficulty-btn { padding: 10px 4px; }
+    .progress-bar-container { margin-bottom: 10px; }
+    .timer-container { margin-bottom: 10px; }
+    .lifelines { margin-bottom: 10px; }
+    .lifeline-btn { padding: 8px 4px; }
+    .life-cost { font-size: 0.64rem; }
+    .option { min-height: 52px; padding: 13px 12px; }
+    .question-card h3 { margin-bottom: 14px; }
 }
 
 /* Very short landscape phones: single-column options to save height */

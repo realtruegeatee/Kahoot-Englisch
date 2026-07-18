@@ -7,10 +7,10 @@ An interactive Kahoot-style quiz website for *The Curious Incident of the Dog in
 - **Multiple difficulty levels** (Easy, Medium, Hard)
 - **Timer system** with visual countdown
 - **Score tracking** with streak bonuses
-- **Lifelines** (Hint, 50/50, Skip)
+- **Lifelines** (Hint −5, 50/50 −10, Skip −15 points) — each costs points, so use them strategically
 - **Responsive design** for mobile and desktop
 - **Confetti animation** for high scores
-- **Local storage** for progress and high scores
+- **Local storage** for high scores and saved question edits
 - **Accessibility** improvements (keyboard navigation, ARIA labels)
 - **Visualized performance metrics**
 - **Automated deployment** to GitHub Pages via GitHub Actions
@@ -31,16 +31,16 @@ An interactive Kahoot-style quiz website for *The Curious Incident of the Dog in
 
 This site is automatically deployed to GitHub Pages whenever changes are pushed to the `main` branch.
 
-The deployment workflow uses:
-- `peaceiris/actions-gh-pages@v3` for GitHub Pages deployment
-- Node.js 20 environment
-- Automatic cleanup with `.gitignore` patterns
+The deployment workflow uses the official GitHub Pages Actions:
+- `actions/upload-pages-artifact@v3` to package the site root
+- `actions/deploy-pages@v4` to publish it
+- Node.js 20 environment on `ubuntu-latest`
 
 ## Development
 
 1. Clone the repository
 2. Install dependencies: `npm install`
-3. Start developing and the site will be accessible
+3. Serve the folder over a local HTTP server (e.g. `npx serve` or `python3 -m http.server`) and open the printed URL. The app fetches `quiz_data.json`, so opening `index.html` directly via `file://` will **not** load the questions.
 
 ## License
 

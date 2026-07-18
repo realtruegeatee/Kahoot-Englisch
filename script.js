@@ -1,13 +1,15 @@
 // Enhanced Quiz Game Script
+const HINT_COST = 5;   // points deducted when the hint lifeline is used
+const FIFTY_COST = 10; // points deducted when 50/50 is used
+const SKIP_COST = 15;  // points deducted when a question is skipped
+
 let quizData = [];
 let currentQuestion = 0;
 let score = 0;
 let selectedQuestions = [];
 let timePerQuestion = 30;
 let timerInterval;
-let timeLeft = 30;
 let lifelines = { hint: true, fifty: true, skip: true };
-let hintUsed = false;
 let currentDifficulty = 'mixed';
 let streak = 0;
 let highScore = localStorage.getItem('highScore') || 0;
@@ -15,13 +17,10 @@ let currentCorrectIndex = 0; // display position of the correct answer for the c
 const STORAGE_KEY = 'quizQuestionsOverride'; // user-edited questions
 
 const questionsDiv = document.getElementById('questions');
-const resultsDiv = document.getElementById('results');
 const scoreSpan = document.getElementById('score');
-const loadingDiv = document.getElementById('loading');
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
-    checkForSavedProgress();
     initQuiz();
 });
 
@@ -51,7 +50,6 @@ function initQuiz() {
             score = 0;
             streak = 0;
             lifelines = { hint: true, fifty: true, skip: true };
-            hintUsed = false;
             document.getElementById('score').textContent = '0';
         })
         .catch(err => console.error('Error loading quiz:', err));
@@ -147,7 +145,6 @@ function showQuestion() {
     document.getElementById('hint-box').style.display = 'none';
 
     // Start timer
-    timeLeft = timePerQuestion;
     startTimer();
 }
 
@@ -155,12 +152,23 @@ function startTimer() {
     const timerBar = document.getElementById('timer-bar');
     clearInterval(timerInterval);
 
-    timerInterval = setInterval(() => {
-        timeLeft--;
-        const percentage = (timeLeft / timePerQuestion) * 100;
-        timerBar.style.width = percentage + '%';
+    // Smooth, GPU-friendly countdown: the bar animates from 100% -> 0% over the
+    // full duration in a single linear transition instead of stepping 1%/second.
+    timerBar.style.transition = 'none';
+    timerBar.style.width = '100%';
+    timerBar.style.background = 'linear-gradient(90deg, #2ecc71, #f39c12)';
+    timerBar.setAttribute('aria-valuenow', '100');
+    // Force a reflow so the reset above is applied before we start the animation.
+    void timerBar.offsetWidth;
+    timerBar.style.transition = `width ${timePerQuestion}s linear, background 0.4s linear`;
+    timerBar.style.width = '0%';
 
-        // Change color based on time
+    let secondsLeft = timePerQuestion;
+    timerInterval = setInterval(() => {
+        secondsLeft--;
+        const percentage = (secondsLeft / timePerQuestion) * 100;
+
+        // Change color based on time remaining.
         if (percentage > 50) {
             timerBar.style.background = 'linear-gradient(90deg, #2ecc71, #f39c12)';
         } else if (percentage > 25) {
@@ -168,41 +176,58 @@ function startTimer() {
         } else {
             timerBar.style.background = 'linear-gradient(90deg, #e74c3c, #c0392b)';
         }
+        timerBar.setAttribute('aria-valuenow', String(Math.max(0, Math.round(percentage))));
 
-        if (timeLeft <= 0) {
+        if (secondsLeft <= 0) {
             clearInterval(timerInterval);
             timeOut();
         }
     }, 1000);
 }
 
+// Lock the timer bar at its current width so it doesn't keep shrinking after the
+// question has been answered or time ran out.
+function freezeTimerBar() {
+    const timerBar = document.getElementById('timer-bar');
+    if (!timerBar) return;
+    const currentWidth = getComputedStyle(timerBar).width;
+    timerBar.style.transition = 'none';
+    timerBar.style.width = currentWidth;
+}
+
 function checkAnswer(selectedIndex) {
     clearInterval(timerInterval);
+    freezeTimerBar();
     const buttons = document.querySelectorAll('.option');
+    const isCorrect = selectedIndex === currentCorrectIndex;
 
-    // Highlight correct and selected answers
+    // Highlight correct and selected answers with visual feedback animations.
     buttons.forEach((btn, i) => {
         btn.disabled = true;
         btn.style.cursor = 'not-allowed';
 
         if (i === currentCorrectIndex) {
-            btn.classList.add('correct');
+            btn.classList.add('correct', 'pulse-correct');
         }
 
-        if (i === selectedIndex && selectedIndex !== currentCorrectIndex) {
-            btn.classList.add('incorrect');
+        if (i === selectedIndex && !isCorrect) {
+            btn.classList.add('incorrect', 'shake-wrong');
         }
     });
 
     // Calculate score
-    if (selectedIndex === currentCorrectIndex) {
+    if (isCorrect) {
         score += 10;
         streak++;
         if (streak >= 3 && streak % 3 === 0) {
             score += 5; // Streak bonus
+            announce('Correct! Streak bonus +5 points.');
+        } else {
+            announce('Correct!');
         }
     } else {
         streak = 0;
+        announce('Wrong answer.');
     }
 
     scoreSpan.textContent = score;
@@ -218,15 +243,17 @@ function checkAnswer(selectedIndex) {
 
 function timeOut() {
     const buttons = document.querySelectorAll('.option');
+    freezeTimerBar();
 
     buttons.forEach((btn, i) => {
         btn.disabled = true;
         btn.style.cursor = 'not-allowed';
-        if (i === currentCorrectIndex) btn.classList.add('correct');
+        if (i === currentCorrectIndex) btn.classList.add('correct', 'pulse-correct');
     });
 
     scoreSpan.textContent = score;
     streak = 0;
+    announce('Time is up.');
 
     setTimeout(() => {
         currentQuestion++;
@@ -240,8 +267,6 @@ function showResults() {
         highScore = score;
         localStorage.setItem('highScore', highScore);
     }
-
-    resetProgress();
 
     document.getElementById('quiz-screen').style.display = 'none';
     document.getElementById('results').style.display = 'block';
@@ -276,12 +301,22 @@ function useHint() {
     const hintBox = document.getElementById('hint-box');
     const hintContent = document.getElementById('hint-content');
 
-    hintContent.textContent = `Think about: ${q.options[q.answer].substring(0, Math.min(20, q.options[q.answer].length))}...`;
+    // Non-revealing hint: prefer an explicit hint written into the question data,
+    // otherwise nudge the player toward the relevant topic without giving away the
+    // correct option (the old hint leaked the first 20 chars of the answer).
+    const text = q.hint
+        ? q.hint
+        : `Tip: focus on the "${q.category || 'General'}" topic and read the question closely.`;
+    hintContent.textContent = text;
     hintBox.style.display = 'block';
 
     lifelines.hint = false;
-    hintUsed = true;
     updateLifelineButtons();
+
+    score = Math.max(0, score - HINT_COST);
+    scoreSpan.textContent = score;
+    bumpScore();
+    announce(`Hint shown. ${HINT_COST} points deducted.`);
 }
 
 function useFiftyFifty() {
@@ -306,6 +341,11 @@ function useFiftyFifty() {
 
     lifelines.fifty = false;
     updateLifelineButtons();
+
+    score = Math.max(0, score - FIFTY_COST);
+    scoreSpan.textContent = score;
+    bumpScore();
+    announce(`Two wrong answers removed. ${FIFTY_COST} points deducted.`);
 }
 
 function skipQuestion() {
@@ -313,6 +353,11 @@ function skipQuestion() {
 
     lifelines.skip = false;
     updateLifelineButtons();
+
+    score = Math.max(0, score - SKIP_COST);
+    scoreSpan.textContent = score;
+    bumpScore();
+    announce(`Question skipped. ${SKIP_COST} points deducted.`);
 
     // Move to next question
     currentQuestion++;
@@ -347,22 +392,6 @@ function launchConfetti() {
     }, 3000);
 }
 
-function checkForSavedProgress() {
-    const saved = localStorage.getItem('quizProgress');
-    if (saved) {
-        try {
-            const progress = JSON.parse(saved);
-            if (progress && progress.currentQuestion < progress.totalQuestions) {
-                if (confirm('Resume your previous quiz?')) {
-                    // Resume logic here
-                }
-            }
-        } catch (e) {
-            console.log('No valid saved progress');
-        }
-    }
-}
-
 // Keyboard navigation support
 document.addEventListener('keydown', (e) => {
     if (document.getElementById('quiz-screen').style.display === 'none') return;
@@ -384,22 +413,6 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-// Save progress
-window.addEventListener('beforeunload', () => {
-    if (currentQuestion > 0 && currentQuestion < selectedQuestions.length) {
-        localStorage.setItem('quizProgress', JSON.stringify({
-            currentQuestion,
-            totalQuestions: selectedQuestions.length,
-            score
-        }));
-    }
-});
-
-// Reset progress on completion
-function resetProgress() {
-    localStorage.removeItem('quizProgress');
-}
-
 // Score bump animation on the HUD
 function bumpScore() {
     const scoreEl = document.querySelector('.hud-score');
@@ -407,6 +420,16 @@ function bumpScore() {
     scoreEl.classList.remove('bump');
     void scoreEl.offsetWidth; // reflow to restart animation
     scoreEl.classList.add('bump');
+}
+
+// Announce a short status message to screen readers via the visually-hidden
+// live region (#sr-status). Clearing first ensures repeated identical
+// messages are re-announced.
+function announce(message) {
+    const el = document.getElementById('sr-status');
+    if (!el) return;
+    el.textContent = '';
+    setTimeout(() => { el.textContent = message; }, 30);
 }
 
 // Theme toggle (persisted in localStorage)
@@ -645,6 +668,10 @@ function handleImport(e) {
         } catch (err) {
             alert('Import failed: ' + err.message);
         }
+        e.target.value = '';
+    };
+    reader.onerror = () => {
+        alert('Import failed: the file could not be read.');
         e.target.value = '';
     };
     reader.readAsText(file);

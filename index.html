@@ -13,6 +13,7 @@
 </head>
 <body>
     <div class="confetti" id="confetti" aria-hidden="true"></div>
+    <div id="sr-status" class="sr-only" role="status" aria-live="assertive"></div>
 
     <button class="theme-toggle" aria-label="Toggle dark mode" onclick="toggleTheme()" title="Toggle dark mode">
         <span id="theme-icon">🌙</span>
@@ -141,14 +142,14 @@
                 </div>
 
                 <div class="lifelines" aria-label="Available lifelines">
-                    <button class="lifeline-btn" id="hint-btn" onclick="useHint()" aria-label="Use hint">
-                        <span class="life-emoji">💡</span><span class="life-label">Hint</span>
+                    <button class="lifeline-btn" id="hint-btn" onclick="useHint()" aria-label="Use hint, costs 5 points">
+                        <span class="life-emoji">💡</span><span class="life-label">Hint</span><span class="life-cost">−5</span>
                     </button>
-                    <button class="lifeline-btn" id="fifty-btn" onclick="useFiftyFifty()" aria-label="Remove two wrong answers">
-                        <span class="life-emoji">🔥</span><span class="life-label">50/50</span>
+                    <button class="lifeline-btn" id="fifty-btn" onclick="useFiftyFifty()" aria-label="Remove two wrong answers, costs 10 points">
+                        <span class="life-emoji">🔥</span><span class="life-label">50/50</span><span class="life-cost">−10</span>
                     </button>
-                    <button class="lifeline-btn" id="skip-btn" onclick="skipQuestion()" aria-label="Skip this question">
-                        <span class="life-emoji">⏭️</span><span class="life-label">Skip</span>
+                    <button class="lifeline-btn" id="skip-btn" onclick="skipQuestion()" aria-label="Skip this question, costs 15 points">
+                        <span class="life-emoji">⏭️</span><span class="life-label">Skip</span><span class="life-cost">−15</span>
                     </button>
                 </div>
 
