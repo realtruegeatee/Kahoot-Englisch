@@ -8,7 +8,7 @@ An interactive Kahoot-style quiz website for *The Curious Incident of the Dog in
 - **Timer system** with visual countdown
 - **Time-based scoring** — answer fast to earn up to 10 points; the longer you take, the fewer points you get
 - **Score tracking** with streak bonuses
-- **World leaderboard** with prime-numbered ranks (#2, #3, #5, #7, …) — simulated client-side; swap in a real API for a global board
+- **Leaderboard** with prime-numbered ranks (#2, #3, #5, #7, …), shown on the start screen. Scores are stored in `leaderboard.json` in this repo (like `quiz_data.json`); you pick a username on first visit.
 - **Lifelines** (Hint −5, 50/50 −10, Skip −15 points) — each costs points, so use them strategically
 - **Responsive design** for mobile and desktop
 - **Confetti animation** for high scores
@@ -37,6 +37,29 @@ The deployment workflow uses the official GitHub Pages Actions:
 - `actions/upload-pages-artifact@v3` to package the site root
 - `actions/deploy-pages@v4` to publish it
 - Node.js 20 environment on `ubuntu-latest`
+
+## Leaderboard
+
+The leaderboard is backed by `leaderboard.json` in this repo (the same pattern as
+`quiz_data.json`). The app reads it and shows the top entries — with prime-numbered
+ranks — on the start screen and the results screen. On first visit you're asked for
+a username (stored in `localStorage`); use **Change name** on the start screen to edit it.
+
+**Submitting scores globally.** By default, a finished run is saved only in your own
+browser (`localStorage`) so you see your score immediately. To persist scores for
+everyone, give the app a scoped GitHub token so it can trigger the `submit-score`
+workflow, which appends the score to `leaderboard.json` and commits it (the Pages
+deploy then republishes):
+
+1. Create a fine-grained Personal Access Token with **Contents: Read/Write** and
+   **Actions: Read/Write** for this repo (or a classic PAT with `repo`).
+2. Set it in `script.js` → `LEADERBOARD_CONFIG.token`, or at runtime via
+   `localStorage['quizLbToken']` (e.g. from the browser console).
+3. Finish a quiz — the app dispatches `event_type: submit-score` with the score in
+   `client_payload`; the workflow writes it to `leaderboard.json` and pushes.
+
+> Note: a token pasted into client-side code is visible to anyone using the site,
+> so only do this on a repo you control, and use a token scoped to this repo only.
 
 ## Development
 

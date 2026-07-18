@@ -17,24 +17,17 @@ let highScore = localStorage.getItem('highScore') || 0;
 let currentCorrectIndex = 0; // display position of the correct answer for the current question
 const STORAGE_KEY = 'quizQuestionsOverride'; // user-edited questions
 
-// Simulated "world" leaderboard. This static site has no backend, so the
-// global ranks are seeded with fictional players and the player's own run is
-// merged in at render time. Swap WORLD_PLAYERS + renderLeaderboard() for a real
-// API call to make the board genuinely global.
-const WORLD_PLAYERS = [
-    { name: 'DetectiveDoyle', score: 173 },
-    { name: 'PrimePi',        score: 161 },
-    { name: 'SherlockFan',    score: 152 },
-    { name: 'RiddleReader',   score: 144 },
-    { name: 'BookwormBex',    score: 138 },
-    { name: 'QuizzicalQ',     score: 129 },
-    { name: 'NightOwl',       score: 117 },
-    { name: 'ChapterChaser',  score: 108 },
-    { name: 'TobyTheRat',     score: 96  },
-    { name: 'SwindonSky',     score: 84  },
-    { name: 'NewcomerN',      score: 71  },
-    { name: 'CuriousCat',     score: 58  }
-];
+// Leaderboard configuration. Scores live in leaderboard.json in this repo (just
+// like quiz_data.json) and are read by the app. To let a visitor's score persist
+// for everyone, set `token` to a scoped GitHub PAT — the app then triggers the
+// submit-score workflow, which appends the score to leaderboard.json and commits
+// it (the Pages deploy then republishes). Leave token empty to keep scores local
+// to the current browser only. A token can also be set at runtime via
+// localStorage['quizLbToken'].
+const LEADERBOARD_CONFIG = {
+    repo: '<owner>/Kahoot-Englisch', // used for global submission; auto-detected from *.github.io
+    token: ''                        // optional scoped PAT, e.g. 'github_pat_xxx'
+};
 
 const questionsDiv = document.getElementById('questions');
 const scoreSpan = document.getElementById('score');
@@ -42,6 +35,8 @@ const scoreSpan = document.getElementById('score');
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
     initQuiz();
+    loadAndRenderLeaderboard();
+    if (!getUsername()) promptUsername();
 });
 
 function initQuiz() {
@@ -312,8 +307,8 @@ function showResults() {
     }
     document.getElementById('performance-text').textContent = performanceText;
 
-    // Render the (simulated) world leaderboard with this run included.
-    renderLeaderboard(score);
+    // Record this run on the leaderboard (local fallback + optional global submit).
+    submitScore(score, currentDifficulty);
 
     // Confetti for high scores
     if (percentage >= 70) {
@@ -340,32 +335,124 @@ function nthPrime(n) {
     return _primes[n - 1];
 }
 
-// Build the leaderboard: merge the player's run into the seeded world players,
-// sort by score, and render the top entries with prime-numbered ranks.
-function renderLeaderboard(playerScore) {
-    const list = document.getElementById('lb-list');
+// Merge the repo leaderboard (leaderboard.json) with any locally-stored runs and
+// render the top entries into the given lists, with prime-numbered ranks.
+async function loadAndRenderLeaderboard() {
+    const username = getUsername();
+    let entries = [];
+    try {
+        const res = await fetch('leaderboard.json', { cache: 'no-store' });
+        if (res.ok) {
+            const data = await res.json();
+            if (Array.isArray(data.entries)) entries = data.entries;
+        }
+    } catch (e) {
+        console.warn('Could not load leaderboard.json:', e);
+    }
+    // Locally stored runs (used when no global token is configured).
+    try {
+        const local = JSON.parse(localStorage.getItem('quizLocalScores') || '[]');
+        if (Array.isArray(local)) entries = entries.concat(local);
+    } catch (e) { /* ignore */ }
+
+    renderLeaderboardInto('menu-lb-list', 'menu-lb-best', entries, username);
+    renderLeaderboardInto('lb-list', 'lb-best', entries, username);
+}
+
+function renderLeaderboardInto(listId, bestId, entries, username) {
+    const list = document.getElementById(listId);
     if (!list) return;
-
-    const entries = WORLD_PLAYERS.map(p => ({ name: p.name, score: p.score, you: false }));
-    entries.push({ name: 'You', score: playerScore, you: true });
-    entries.sort((a, b) => b.score - a.score);
-
-    const top = entries.slice(0, 10);
-    list.innerHTML = top.map((e, i) => `
-        <li class="lb-row${e.you ? ' lb-you' : ''}">
+    const sorted = [...entries].sort((a, b) => b.score - a.score).slice(0, 10);
+    list.innerHTML = sorted.map((e, i) => `
+        <li class="lb-row${e.name === username ? ' lb-you' : ''}">
             <span class="lb-rank">#${nthPrime(i + 1)}</span>
             <span class="lb-name">${escapeHtml(e.name)}</span>
             <span class="lb-score">${e.score}</span>
         </li>
     `).join('');
 
-    // Persist and show the player's personal best.
-    const bestEl = document.getElementById('lb-best');
-    if (bestEl) {
-        const best = Number(localStorage.getItem('quizBest') || 0);
-        if (playerScore > best) localStorage.setItem('quizBest', playerScore);
-        bestEl.textContent = `Your best: ${Math.max(playerScore, best)}`;
+    if (bestId) {
+        const bestEl = document.getElementById(bestId);
+        if (bestEl) {
+            const myBest = entries
+                .filter(e => e.name === username)
+                .reduce((m, e) => Math.max(m, e.score), 0);
+            bestEl.textContent = myBest ? `Your best: ${myBest}` : '';
+        }
     }
+}
+
+// Record a finished run: always store locally (instant feedback) and, if a GitHub
+// token is configured, dispatch the submit-score workflow to persist it globally.
+async function submitScore(score, difficulty) {
+    const username = getUsername() || 'Anonymous';
+    const entry = {
+        name: username.slice(0, 20),
+        score: Number(score) || 0,
+        difficulty: difficulty || 'mixed',
+        date: new Date().toISOString().slice(0, 10)
+    };
+
+    let local = [];
+    try { local = JSON.parse(localStorage.getItem('quizLocalScores') || '[]'); } catch (e) { /* ignore */ }
+    local.push(entry);
+    if (local.length > 50) local = local.slice(-50);
+    localStorage.setItem('quizLocalScores', JSON.stringify(local));
+
+    const token = LEADERBOARD_CONFIG.token || localStorage.getItem('quizLbToken') || '';
+    if (token) {
+        const repo = location.hostname.endsWith('.github.io')
+            ? location.hostname.split('.')[0] + '/Kahoot-Englisch'
+            : LEADERBOARD_CONFIG.repo;
+        try {
+            await fetch(`https://api.github.com/repos/${repo}/dispatches`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Accept': 'application/vnd.github+json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ event_type: 'submit-score', client_payload: entry })
+            });
+        } catch (e) {
+            console.warn('Score submission failed:', e);
+        }
+    }
+
+    await loadAndRenderLeaderboard();
+}
+
+/* ---------- Username (set once, stored locally) ---------- */
+function getUsername() { return localStorage.getItem('quizUsername') || ''; }
+
+function promptUsername() {
+    const input = document.getElementById('username-input');
+    if (input) input.value = getUsername();
+    const err = document.getElementById('username-error');
+    if (err) err.style.display = 'none';
+    const modal = document.getElementById('username-modal');
+    if (modal) {
+        modal.style.display = 'flex';
+        if (input) setTimeout(() => input.focus(), 50);
+    }
+}
+
+function closeUsernameModal() {
+    const modal = document.getElementById('username-modal');
+    if (modal) modal.style.display = 'none';
+}
+
+function saveUsername() {
+    const input = document.getElementById('username-input');
+    const name = (input ? input.value : '').trim();
+    if (!name) {
+        const err = document.getElementById('username-error');
+        if (err) err.style.display = 'block';
+        return;
+    }
+    localStorage.setItem('quizUsername', name.slice(0, 20));
+    closeUsernameModal();
+    loadAndRenderLeaderboard();
 }
 
 function useHint() {

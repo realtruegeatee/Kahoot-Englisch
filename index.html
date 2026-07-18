@@ -49,6 +49,15 @@
 
                 <button onclick="startQuiz()" class="btn btn-primary btn-large">Start Quiz ▶</button>
                 <button onclick="promptEditorCode()" class="btn btn-ghost btn-large editor-open-btn">✏️ Edit Questions</button>
+
+                <div class="leaderboard menu-leaderboard" id="menu-leaderboard" aria-label="Leaderboard">
+                    <div class="lb-head">
+                        <h3 class="lb-title">🌍 Leaderboard</h3>
+                        <button class="link-btn" type="button" onclick="promptUsername()">Change name</button>
+                    </div>
+                    <ol class="lb-list" id="menu-lb-list"></ol>
+                    <span class="lb-best" id="menu-lb-best"></span>
+                </div>
             </section>
 
             <!-- Editor Screen -->
@@ -116,6 +125,22 @@
                     <div class="modal-actions">
                         <button class="btn btn-primary" onclick="submitEditorCode()">Unlock</button>
                         <button class="btn btn-ghost" onclick="closeCodeModal()">Cancel</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Username modal (gates the leaderboard identity) -->
+            <div id="username-modal" class="modal-overlay" style="display:none;">
+                <div class="modal-backdrop" onclick="closeUsernameModal()"></div>
+                <div class="modal" role="dialog" aria-modal="true" aria-labelledby="un-title">
+                    <h3 id="un-title">🌍 Leaderboard name</h3>
+                    <p class="hint-small">Choose a username to appear on the leaderboard.</p>
+                    <div class="form-group">
+                        <input type="text" id="username-input" placeholder="Your username" maxlength="20" onkeydown="if(event.key==='Enter')saveUsername()">
+                    </div>
+                    <p id="username-error" class="code-error" style="display:none;">Please enter a username.</p>
+                    <div class="modal-actions">
+                        <button class="btn btn-primary" onclick="saveUsername()">Save</button>
                     </div>
                 </div>
             </div>
