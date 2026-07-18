@@ -50,18 +50,38 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
-html { -webkit-text-size-adjust: 100%; }
+html { -webkit-text-size-adjust: 100%; background-color: var(--bg-1); }
 
 body {
     font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
-    background: linear-gradient(160deg, var(--bg-1) 0%, var(--bg-2) 100%);
-    background-attachment: fixed;
+    background: transparent;
     color: var(--text);
     min-height: 100vh;
     min-height: 100dvh;
     line-height: 1.55;
     transition: background var(--transition), color var(--transition);
     padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Blurred book cover sits behind everything */
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -2;
+    background: url('assets/book-cover.jpg') center / cover no-repeat;
+    filter: blur(16px) saturate(1.1);
+    transform: scale(1.12); /* overscan so blurred edges don't show gaps */
+}
+
+/* Tint overlay keeps text readable over the cover (light + dark mode) */
+body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background: linear-gradient(160deg, var(--bg-1) 0%, var(--bg-2) 100%);
+    opacity: 0.82;
 }
 
 /* Visually hidden but available to screen readers */
