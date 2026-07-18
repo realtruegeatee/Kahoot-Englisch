@@ -1,0 +1,23 @@
+{
+  "name": "curious-incident-quiz",
+  "version": "1.0.0",
+  "description": "Interactive Kahoot-style quiz for The Curious Incident of the Dog in the Night-Time",
+  "main": "index.html",
+  "scripts": {
+    "start": "echo \"Open index.html in your browser\"",
+    "build": "echo \"Static site - no build required\"",
+    "deploy": "git add . && git commit -m \"Deploy to GitHub Pages\" && git push"
+  },
+  "keywords": [
+    "quiz",
+    "kahoot",
+    "curious incident",
+    "mark hadown",
+    "book-quiz",
+    "literature",
+    "education"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {}
+}
