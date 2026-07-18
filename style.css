@@ -443,6 +443,90 @@ header .subtitle {
 /* ---------- Footer ---------- */
 .site-footer { text-align: center; padding: 18px 10px 30px; color: var(--text-muted); font-size: 0.85rem; }
 .site-footer em { color: var(--text); }
+.link-btn {
+    background: none; border: none; color: var(--primary); cursor: pointer;
+    font: inherit; font-size: 0.82rem; text-decoration: underline; margin-top: 6px; padding: 4px;
+}
+.link-btn:hover { color: var(--primary-dark); }
+
+/* ---------- Editor ---------- */
+.editor-open-btn { margin-top: 12px; }
+.editor-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
+.editor-toolbar { display: flex; flex-wrap: wrap; gap: 10px; margin: 16px 0 22px; }
+
+.btn-ghost {
+    background: transparent; color: var(--text); border: 2px solid var(--border);
+    box-shadow: none;
+}
+.btn-ghost:hover { background: var(--surface); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+.btn-small { padding: 9px 16px; min-height: 40px; font-size: 0.9rem; }
+.btn-danger { background: var(--danger); color: #fff; box-shadow: 0 6px 18px rgba(231,76,60,0.3); }
+.btn-danger:hover { background: var(--danger-dark); box-shadow: 0 8px 22px rgba(231,76,60,0.4); }
+
+.question-list { display: flex; flex-direction: column; gap: 10px; }
+.q-item {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    padding: 12px 14px;
+}
+.q-item-main { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.q-text { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.q-badge {
+    flex: 0 0 auto; font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+    padding: 3px 9px; border-radius: 999px; letter-spacing: 0.04em;
+}
+.q-badge.easy { background: #d4edda; color: #155724; }
+.q-badge.medium { background: #fff3cd; color: #856404; }
+.q-badge.hard { background: #f8d7da; color: #721c24; }
+:root[data-theme="dark"] .q-badge.easy { background: #14361f; color: #7ee2a8; }
+:root[data-theme="dark"] .q-badge.medium { background: #3a3214; color: #f0c674; }
+:root[data-theme="dark"] .q-badge.hard { background: #3a1a1f; color: #f29bab; }
+.q-item-actions { display: flex; gap: 8px; flex: 0 0 auto; }
+
+/* ---------- Modal ---------- */
+.modal-overlay {
+    position: fixed; inset: 0; z-index: 200; display: flex; align-items: center; justify-content: center;
+    padding: 16px;
+}
+.modal-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(2px); }
+.modal {
+    position: relative; background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: clamp(18px, 4vw, 28px); width: 100%; max-width: 520px;
+    max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-lg); z-index: 1;
+    animation: fadeIn 0.25s ease;
+}
+.modal h3 { margin-bottom: 18px; font-size: 1.25rem; }
+.form-group { margin-bottom: 16px; display: flex; flex-direction: column; gap: 6px; }
+.form-group label { font-weight: 600; font-size: 0.9rem; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.modal textarea, .modal input[type="text"], .modal select {
+    width: 100%; font-family: inherit; font-size: 1rem; padding: 11px 12px;
+    border: 2px solid var(--border); border-radius: var(--radius-sm); background: var(--card-bg); color: var(--text);
+    transition: var(--transition);
+}
+.modal textarea { resize: vertical; }
+.modal textarea:focus, .modal input:focus, .modal select:focus {
+    outline: none; border-color: var(--primary);
+}
+.hint-small { font-weight: 400; color: var(--text-muted); font-size: 0.82rem; }
+
+.opt-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.opt-row input[type="radio"] { width: 18px; height: 18px; accent-color: var(--primary); flex: 0 0 auto; cursor: pointer; }
+.opt-letter {
+    flex: 0 0 auto; width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center;
+    font-weight: 800; color: #fff; background: var(--primary); cursor: pointer;
+}
+.opt-input { flex: 1; }
+
+.modal-actions { display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
+.modal-actions .btn { flex: 1; min-width: 130px; }
+
+@media (max-width: 520px) {
+    .form-row { grid-template-columns: 1fr; }
+    .q-text { white-space: normal; }
+    .q-item { flex-direction: column; align-items: stretch; }
+    .q-item-actions { justify-content: flex-end; }
+}
 
 /* ---------- Confetti ---------- */
 .confetti {

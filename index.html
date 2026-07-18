@@ -47,7 +47,59 @@
                 </div>
 
                 <button onclick="startQuiz()" class="btn btn-primary btn-large">Start Quiz ▶</button>
+                <button onclick="openEditor()" class="btn btn-ghost btn-large editor-open-btn">✏️ Edit Questions</button>
             </section>
+
+            <!-- Editor Screen -->
+            <section id="editor-screen" style="display: none;">
+                <div class="editor-header">
+                    <h2 class="screen-title" style="margin:0;">✏️ Edit Questions</h2>
+                    <button class="btn btn-ghost btn-small" onclick="closeEditor()">← Back</button>
+                </div>
+                <p class="screen-sub">Edits are saved in this browser. Use <strong>Export JSON</strong> to download your changes and commit them to the repo.</p>
+                <div class="editor-toolbar">
+                    <button class="btn btn-primary" onclick="openQuestionForm()">＋ Add Question</button>
+                    <button class="btn" onclick="exportQuestions()">⬇ Export JSON</button>
+                    <button class="btn" onclick="importQuestions()">⬆ Import JSON</button>
+                    <button class="btn btn-danger" onclick="resetQuestions()">↺ Reset to original</button>
+                    <input type="file" id="import-file" accept=".json,application/json" style="display:none" onchange="handleImport(event)">
+                </div>
+                <div id="question-list" class="question-list"></div>
+            </section>
+
+            <!-- Question form modal -->
+            <div id="question-form-modal" class="modal-overlay" style="display:none;">
+                <div class="modal-backdrop" onclick="closeQuestionForm()"></div>
+                <div class="modal" role="dialog" aria-modal="true" aria-labelledby="form-title">
+                    <h3 id="form-title">Add Question</h3>
+                    <div class="form-group">
+                        <label for="f-question">Question</label>
+                        <textarea id="f-question" rows="2" placeholder="Enter the question..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Answer options <span class="hint-small">(select the correct one)</span></label>
+                        <div id="f-options"></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="f-difficulty">Difficulty</label>
+                            <select id="f-difficulty">
+                                <option value="easy">Easy</option>
+                                <option value="medium">Medium</option>
+                                <option value="hard">Hard</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="f-category">Category</label>
+                            <input id="f-category" type="text" placeholder="e.g. Characters">
+                        </div>
+                    </div>
+                    <div class="modal-actions">
+                        <button class="btn btn-primary" onclick="saveQuestion()">Save Question</button>
+                        <button class="btn btn-ghost" onclick="closeQuestionForm()">Cancel</button>
+                    </div>
+                </div>
+            </div>
 
             <!-- Quiz Screen -->
             <section id="quiz-screen" style="display: none;">
@@ -110,6 +162,7 @@
 
         <footer class="site-footer">
             <p>Based on <em>The Curious Incident of the Dog in the Night-Time</em> by Mark Haddon</p>
+            <button class="link-btn" onclick="openEditor()">✏️ Edit questions</button>
         </footer>
     </div>
 

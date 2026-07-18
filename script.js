@@ -11,6 +11,8 @@ let hintUsed = false;
 let currentDifficulty = 'mixed';
 let streak = 0;
 let highScore = localStorage.getItem('highScore') || 0;
+let currentCorrectIndex = 0; // display position of the correct answer for the current question
+const STORAGE_KEY = 'quizQuestionsOverride'; // user-edited questions
 
 const questionsDiv = document.getElementById('questions');
 const resultsDiv = document.getElementById('results');
@@ -32,6 +34,18 @@ function initQuiz() {
     fetch('quiz_data.json')
         .then(response => response.json())
         .then(data => {
+            // Apply user-edited questions if present
+            const override = localStorage.getItem(STORAGE_KEY);
+            if (override) {
+                try {
+                    const parsed = JSON.parse(override);
+                    if (Array.isArray(parsed) && parsed.length) {
+                        data.questions = parsed;
+                    }
+                } catch (e) {
+                    console.warn('Could not parse saved questions:', e);
+                }
+            }
             quizData = data;
             currentQuestion = 0;
             score = 0;
@@ -103,12 +117,17 @@ function showQuestion() {
     const category = q.category ? q.category : 'General';
     const difficulty = q.difficulty ? q.difficulty : 'mixed';
 
-    // Create options HTML with letter badges (A, B, C, D)
+    // Shuffle the option order so the correct answer lands in a random
+    // position (A/B/C/D) every time the question is shown.
     const letters = ['A', 'B', 'C', 'D'];
-    const optionsHtml = q.options.map((opt, i) =>
-        `<button class="option" onclick="checkAnswer(${i})" data-index="${i}">
-            <span class="opt-badge">${letters[i]}</span>
-            <span class="opt-text">${opt}</span>
+    const indexed = q.options.map((text, original) => ({ text, original }));
+    const shuffled = shuffleArray(indexed);
+    currentCorrectIndex = shuffled.findIndex(o => o.original === q.answer);
+
+    const optionsHtml = shuffled.map((o, displayPos) =>
+        `<button class="option" onclick="checkAnswer(${displayPos})" data-index="${displayPos}">
+            <span class="opt-badge">${letters[displayPos]}</span>
+            <span class="opt-text">${escapeHtml(o.text)}</span>
         </button>`
     ).join('');
 
@@ -118,8 +137,8 @@ function showQuestion() {
 
     questionsDiv.innerHTML = `
         <div class="question-card">
-            <span class="category-badge ${difficulty}">${category} • ${difficulty}</span>
-            <h3>${q.question}</h3>
+            <span class="category-badge ${difficulty}">${escapeHtml(category)} • ${difficulty}</span>
+            <h3>${escapeHtml(q.question)}</h3>
             <div class="options">${optionsHtml}</div>
         </div>
     `;
@@ -159,7 +178,6 @@ function startTimer() {
 
 function checkAnswer(selectedIndex) {
     clearInterval(timerInterval);
-    const q = selectedQuestions[currentQuestion];
     const buttons = document.querySelectorAll('.option');
 
     // Highlight correct and selected answers
@@ -167,17 +185,17 @@ function checkAnswer(selectedIndex) {
         btn.disabled = true;
         btn.style.cursor = 'not-allowed';
 
-        if (i === q.answer) {
+        if (i === currentCorrectIndex) {
             btn.classList.add('correct');
         }
 
-        if (i === selectedIndex && selectedIndex !== q.answer) {
+        if (i === selectedIndex && selectedIndex !== currentCorrectIndex) {
             btn.classList.add('incorrect');
         }
     });
 
     // Calculate score
-    if (selectedIndex === q.answer) {
+    if (selectedIndex === currentCorrectIndex) {
         score += 10;
         streak++;
         if (streak >= 3 && streak % 3 === 0) {
@@ -199,13 +217,12 @@ function checkAnswer(selectedIndex) {
 }
 
 function timeOut() {
-    const q = selectedQuestions[currentQuestion];
     const buttons = document.querySelectorAll('.option');
 
     buttons.forEach((btn, i) => {
         btn.disabled = true;
         btn.style.cursor = 'not-allowed';
-        if (i === q.answer) btn.classList.add('correct');
+        if (i === currentCorrectIndex) btn.classList.add('correct');
     });
 
     scoreSpan.textContent = score;
@@ -271,12 +288,11 @@ function useFiftyFifty() {
     if (!lifelines.fifty) return;
 
     const buttons = document.querySelectorAll('.option');
-    const correctIndex = selectedQuestions[currentQuestion].answer;
     const wrongIndices = [];
 
-    // Find wrong answers
+    // Find wrong answers (relative to the current shuffled display order)
     buttons.forEach((btn, i) => {
-        if (i !== correctIndex && wrongIndices.length < 2) {
+        if (i !== currentCorrectIndex && wrongIndices.length < 2) {
             wrongIndices.push(i);
         }
     });
@@ -417,3 +433,188 @@ function toggleTheme() {
         if (icon) icon.textContent = '☀️';
     }
 })();
+
+/* =========================================================
+   Question Editor (saved to localStorage, no backend needed)
+   ========================================================= */
+let workingQuestions = [];
+let editingId = null;
+
+function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, c =>
+        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function openEditor() {
+    if (!quizData || !quizData.questions) {
+        alert('Quiz is still loading, please wait a moment.');
+        return;
+    }
+    // Deep copy so edits don't mutate the source until saved
+    workingQuestions = quizData.questions.map(q => ({ ...q, options: [...q.options] }));
+    document.getElementById('start-screen').style.display = 'none';
+    document.getElementById('quiz-screen').style.display = 'none';
+    document.getElementById('results').style.display = 'none';
+    document.getElementById('editor-screen').style.display = 'block';
+    renderQuestionList();
+}
+
+function closeEditor() {
+    document.getElementById('editor-screen').style.display = 'none';
+    document.getElementById('start-screen').style.display = 'block';
+}
+
+function renderQuestionList() {
+    const list = document.getElementById('question-list');
+    if (!workingQuestions.length) {
+        list.innerHTML = '<p>No questions yet. Click "Add Question" to create one.</p>';
+        return;
+    }
+    list.innerHTML = workingQuestions.map(q => `
+        <div class="q-item">
+            <div class="q-item-main">
+                <span class="q-badge ${q.difficulty || 'medium'}">${q.difficulty || 'medium'}</span>
+                <span class="q-text" title="${escapeHtml(q.question)}">${escapeHtml(q.question)}</span>
+            </div>
+            <div class="q-item-actions">
+                <button class="btn btn-small btn-ghost" onclick="openQuestionForm(${q.id})">Edit</button>
+                <button class="btn btn-small btn-danger" onclick="deleteQuestion(${q.id})">Delete</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function openQuestionForm(id) {
+    editingId = (id === undefined) ? null : id;
+    document.getElementById('form-title').textContent = editingId === null ? 'Add Question' : 'Edit Question';
+    const q = editingId !== null ? workingQuestions.find(x => x.id === editingId) : null;
+    document.getElementById('f-question').value = q ? q.question : '';
+    document.getElementById('f-difficulty').value = q ? (q.difficulty || 'easy') : 'easy';
+    document.getElementById('f-category').value = q ? (q.category || '') : '';
+    renderOptionInputs(q ? q.options : ['', '', '', ''], q ? q.answer : 0);
+    document.getElementById('question-form-modal').style.display = 'flex';
+}
+
+function renderOptionInputs(options, correct) {
+    const container = document.getElementById('f-options');
+    const letters = ['A', 'B', 'C', 'D'];
+    container.innerHTML = options.map((opt, i) => `
+        <div class="opt-row">
+            <input type="radio" name="correct" value="${i}" id="correct-${i}" ${i === correct ? 'checked' : ''}>
+            <label for="correct-${i}" class="opt-letter">${letters[i]}</label>
+            <input type="text" class="opt-input" data-i="${i}" value="${escapeHtml(opt)}" placeholder="Option ${letters[i]}">
+        </div>
+    `).join('');
+}
+
+function closeQuestionForm() {
+    document.getElementById('question-form-modal').style.display = 'none';
+    editingId = null;
+}
+
+function saveQuestion() {
+    const qText = document.getElementById('f-question').value.trim();
+    const optInputs = Array.from(document.querySelectorAll('#f-options .opt-input'));
+    const options = optInputs.map(inp => inp.value.trim());
+    const checked = document.querySelector('#f-options input[name="correct"]:checked');
+
+    if (!qText) { alert('Please enter a question.'); return; }
+    if (options.some(o => !o)) { alert('Please fill in all four options.'); return; }
+    if (!checked) { alert('Please select the correct answer.'); return; }
+
+    const answer = parseInt(checked.value, 10);
+    const difficulty = document.getElementById('f-difficulty').value;
+    const category = document.getElementById('f-category').value.trim() || 'General';
+
+    if (editingId === null) {
+        const newId = workingQuestions.reduce((max, q) => Math.max(max, q.id || 0), 0) + 1;
+        workingQuestions.push({ id: newId, question: qText, options, answer, difficulty, category });
+    } else {
+        const q = workingQuestions.find(x => x.id === editingId);
+        if (q) {
+            q.question = qText;
+            q.options = options;
+            q.answer = answer;
+            q.difficulty = difficulty;
+            q.category = category;
+        }
+    }
+    persistQuestions();
+    renderQuestionList();
+    closeQuestionForm();
+}
+
+function deleteQuestion(id) {
+    if (!confirm('Delete this question? This cannot be undone.')) return;
+    workingQuestions = workingQuestions.filter(q => q.id !== id);
+    persistQuestions();
+    renderQuestionList();
+}
+
+function persistQuestions() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(workingQuestions));
+    if (quizData) quizData.questions = workingQuestions;
+}
+
+function exportQuestions() {
+    const data = {
+        quiz_title: (quizData && quizData.quiz_title) || 'Quiz',
+        questions: workingQuestions,
+        settings: (quizData && quizData.settings) || { questionsPerGame: 15, timePerQuestion: 30 }
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'quiz_data.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+}
+
+function importQuestions() {
+    document.getElementById('import-file').click();
+}
+
+function handleImport(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+        try {
+            const data = JSON.parse(reader.result);
+            const questions = Array.isArray(data) ? data : data.questions;
+            if (!Array.isArray(questions) || !questions.length) throw new Error('No questions found.');
+            questions.forEach(q => {
+                if (!q.question || !Array.isArray(q.options) || q.options.length < 2) {
+                    throw new Error('A question is missing text or options.');
+                }
+                if (typeof q.answer !== 'number' || q.answer < 0 || q.answer >= q.options.length) {
+                    throw new Error('A question has an invalid correct-answer index.');
+                }
+            });
+            workingQuestions = questions.map(q => ({ ...q, options: [...q.options] }));
+            persistQuestions();
+            renderQuestionList();
+            alert('Imported ' + workingQuestions.length + ' questions.');
+        } catch (err) {
+            alert('Import failed: ' + err.message);
+        }
+        e.target.value = '';
+    };
+    reader.readAsText(file);
+}
+
+function resetQuestions() {
+    if (!confirm('Reset to the original questions? This discards all your edits.')) return;
+    localStorage.removeItem(STORAGE_KEY);
+    fetch('quiz_data.json')
+        .then(r => r.json())
+        .then(data => {
+            quizData = data;
+            workingQuestions = data.questions.map(q => ({ ...q, options: [...q.options] }));
+            renderQuestionList();
+        })
+        .catch(err => alert('Could not reload original questions: ' + err));
+}
