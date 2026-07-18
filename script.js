@@ -25,8 +25,8 @@ const STORAGE_KEY = 'quizQuestionsOverride'; // user-edited questions
 // Leave both empty to fall back to a local-only board (leaderboard.json + this
 // browser's localStorage).
 const LEADERBOARD_CONFIG = {
-    supabaseUrl: '',  // e.g. 'https://abcd1234.supabase.co'
-    supabaseKey: '',  // anon/public key
+    supabaseUrl: 'https://aokpohavwjpakbnsxzdi.supabase.co',  // e.g. 'https://abcd1234.supabase.co'
+    supabaseKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFva3BvaGF2d2pwYWtibnN4emRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzOTY5NTcsImV4cCI6MjA5OTk3Mjk1N30.2HFau62tjN9v2YKu1aVCYr5WKzJcR3N8Ylj5b1VZpCw',  // anon/public key
     table: 'leaderboard'
 };
 
@@ -356,7 +356,7 @@ async function loadAndRenderLeaderboard() {
         try {
             const res = await fetch(
                 `${url}/rest/v1/${LEADERBOARD_CONFIG.table}` +
-                `?select=name,score,difficulty&order=score.desc&limit=10`,
+                `?select=name,score,difficulty&order=score.desc`,
                 { headers: { 'apikey': key, 'Authorization': 'Bearer ' + key } }
             );
             if (res.ok) entries = await res.json();
@@ -387,14 +387,19 @@ async function loadAndRenderLeaderboard() {
 function renderLeaderboardInto(listId, bestId, entries, username) {
     const list = document.getElementById(listId);
     if (!list) return;
-    const sorted = [...entries].sort((a, b) => b.score - a.score).slice(0, 10);
-    list.innerHTML = sorted.map((e, i) => `
-        <li class="lb-row${e.name === username ? ' lb-you' : ''}">
-            <span class="lb-rank">#${nthPrime(i + 1)}</span>
-            <span class="lb-name">${escapeHtml(e.name)}</span>
-            <span class="lb-score">${e.score}</span>
-        </li>
-    `).join('');
+    // Show every entry on the board (sorted high to low), not just the top few.
+    const sorted = [...entries].sort((a, b) => b.score - a.score);
+    if (!sorted.length) {
+        list.innerHTML = '<li class="lb-empty">No scores yet — be the first!</li>';
+    } else {
+        list.innerHTML = sorted.map((e, i) => `
+            <li class="lb-row${e.name === username ? ' lb-you' : ''}">
+                <span class="lb-rank">#${nthPrime(i + 1)}</span>
+                <span class="lb-name">${escapeHtml(e.name)}</span>
+                <span class="lb-score">${e.score}</span>
+            </li>
+        `).join('');
+    }
 
     if (bestId) {
         const bestEl = document.getElementById(bestId);

@@ -73,8 +73,8 @@ read + insert). For a production board you'd add rate limiting / validation and
 probably require a login.
 
 **Without Supabase configured**, the board falls back to a local-only mode: it reads
-the seeded `leaderboard.json` and stores your runs in `localStorage`, so the UI still
-works but scores are not shared with other devices.
+`leaderboard.json` (empty by default) and stores your runs in `localStorage`, so the
+UI still works but scores are not shared with other devices.
 
 ## Development
 

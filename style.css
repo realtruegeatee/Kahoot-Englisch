@@ -511,8 +511,10 @@ header .subtitle {
 .lb-you .lb-rank,
 .lb-you .lb-score { color: #fff; }
 .lb-best { display: block; margin-top: 10px; font-size: 0.8rem; color: var(--text-muted); font-weight: 600; }
-/* Keep the menu leaderboard compact so the start screen stays tidy */
-.menu-leaderboard .lb-list { max-height: 230px; overflow-y: auto; }
+.lb-empty { color: var(--text-muted); font-size: 0.9rem; text-align: center; padding: 12px; list-style: none; }
+/* All entries are shown; scroll within the panel so the start screen stays tidy */
+.menu-leaderboard .lb-list { max-height: 320px; overflow-y: auto; padding-right: 4px; }
+#results .lb-list { max-height: 360px; overflow-y: auto; padding-right: 4px; }
 
 /* ---------- Footer ---------- */
 .site-footer { text-align: center; padding: 18px 10px 30px; color: var(--text-muted); font-size: 0.85rem; }

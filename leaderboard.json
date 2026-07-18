@@ -1,12 +1,3 @@
 {
-  "entries": [
-    { "name": "DetectiveDoyle", "score": 168, "difficulty": "hard",   "date": "2026-07-01" },
-    { "name": "PrimePi",        "score": 154, "difficulty": "hard",   "date": "2026-07-02" },
-    { "name": "SherlockFan",    "score": 142, "difficulty": "medium", "date": "2026-07-03" },
-    { "name": "RiddleReader",   "score": 131, "difficulty": "hard",   "date": "2026-07-04" },
-    { "name": "BookwormBex",    "score": 119, "difficulty": "mixed",  "date": "2026-07-05" },
-    { "name": "QuizzicalQ",     "score": 107, "difficulty": "medium", "date": "2026-07-06" },
-    { "name": "TobyTheRat",     "score": 93,  "difficulty": "easy",   "date": "2026-07-07" },
-    { "name": "CuriousCat",     "score": 64,  "difficulty": "easy",   "date": "2026-07-08" }
-  ]
+  "entries": []
 }
