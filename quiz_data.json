@@ -55,12 +55,12 @@
     },
     {
       "id": 5,
-      "question": "What color does Christopher hate the most?",
+      "question": "According to Christopher, which colors make him feel angry inside?",
       "options": [
-        "Red",
-        "Yellow",
-        "Blue",
-        "Green"
+        "Red and blue",
+        "Yellow and brown",
+        "Green and black",
+        "White and grey"
       ],
       "answer": 1,
       "difficulty": "easy",
@@ -81,16 +81,16 @@
     },
     {
       "id": 7,
-      "question": "What kind of car does Christopher's father drive?",
+      "question": "Who owns Wellington, the dog found dead on the lawn?",
       "options": [
-        "A blue Ford",
-        "A red Toyota",
-        "A white BMW",
-        "A black Mercedes"
+        "Mrs. Shears",
+        "Siobhan",
+        "Christopher's mother",
+        "Mr. Shears"
       ],
-      "answer": 1,
+      "answer": 0,
       "difficulty": "medium",
-      "category": "Details"
+      "category": "Characters"
     },
     {
       "id": 8,
@@ -237,16 +237,16 @@
     },
     {
       "id": 19,
-      "question": "What does Christopher find in his father's shirt pocket that leads to a major discovery?",
+      "question": "What does Christopher carry to help him feel safe on his journey?",
       "options": [
-        "A key",
-        "A letter from his mother",
-        "Money",
-        "A photograph"
+        "A Swiss Army knife",
+        "A toy car",
+        "A list of prime numbers",
+        "A photograph of his mother"
       ],
-      "answer": 1,
+      "answer": 0,
       "difficulty": "medium",
-      "category": "Plot"
+      "category": "Details"
     },
     {
       "id": 20,
@@ -263,10 +263,10 @@
     },
     {
       "id": 21,
-      "question": "How does Christopher's mother die according to his father's lie?",
+      "question": "According to his father's lie, how did Christopher's mother die?",
       "options": [
-        "Car accident",
         "Heart attack",
+        "Car accident",
         "Cancer",
         "Stroke"
       ],
@@ -315,7 +315,7 @@
     },
     {
       "id": 25,
-      "question": "What mathematical concept does Christopher explain in detail in the appendix?",
+      "question": "What mathematical puzzle does Christopher explain in detail in the novel?",
       "options": [
         "The Monty Hall Problem",
         "The Goldbach Conjecture",
