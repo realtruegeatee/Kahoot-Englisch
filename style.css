@@ -63,26 +63,19 @@ body {
     padding-bottom: env(safe-area-inset-bottom);
 }
 
-/* Blurred book cover sits behind everything */
-body::before {
-    content: "";
+/* Blurred book cover + tint, rendered as a fixed full-screen layer behind the
+   content. Positive z-index only (no negative-z-index-vs-root-background quirk). */
+#bg {
     position: fixed;
     inset: 0;
-    z-index: -2;
-    background: url('assets/book-cover.jpg') center / cover no-repeat;
-    filter: blur(16px) saturate(1.1);
+    z-index: 0;
+    background:
+        linear-gradient(160deg,
+            color-mix(in srgb, var(--bg-1) 55%, transparent),
+            color-mix(in srgb, var(--bg-2) 55%, transparent)),
+        url('assets/book-cover.jpg') center / cover no-repeat;
+    filter: blur(16px) saturate(1.1) brightness(0.95);
     transform: scale(1.12); /* overscan so blurred edges don't show gaps */
-}
-
-/* Tint overlay keeps text readable over the cover (light + dark mode).
-   Kept fairly low so the blurred book cover stays clearly visible. */
-body::after {
-    content: "";
-    position: fixed;
-    inset: 0;
-    z-index: -1;
-    background: linear-gradient(160deg, var(--bg-1) 0%, var(--bg-2) 100%);
-    opacity: 0.5;
 }
 
 /* Visually hidden but available to screen readers */
@@ -100,6 +93,8 @@ body::after {
     max-width: 760px;
     margin: 0 auto;
     padding: 24px 18px 8px;
+    position: relative;
+    z-index: 1; /* sit above the #bg cover layer */
 }
 
 /* ---------- Theme toggle ---------- */
