@@ -17,16 +17,17 @@ let highScore = localStorage.getItem('highScore') || 0;
 let currentCorrectIndex = 0; // display position of the correct answer for the current question
 const STORAGE_KEY = 'quizQuestionsOverride'; // user-edited questions
 
-// Leaderboard configuration. Scores live in leaderboard.json in this repo (just
-// like quiz_data.json) and are read by the app. To let a visitor's score persist
-// for everyone, set `token` to a scoped GitHub PAT — the app then triggers the
-// submit-score workflow, which appends the score to leaderboard.json and commits
-// it (the Pages deploy then republishes). Leave token empty to keep scores local
-// to the current browser only. A token can also be set at runtime via
-// localStorage['quizLbToken'].
+// Leaderboard configuration. Scores are stored in a shared Supabase table so they
+// sync worldwide across all devices in near real time. The anon key is safe to
+// expose (Row Level Security controls access). Create a free project, run the SQL
+// from the README, then set the URL + anon key here (or at runtime via
+// localStorage['quizSupabaseUrl'] / localStorage['quizSupabaseKey']).
+// Leave both empty to fall back to a local-only board (leaderboard.json + this
+// browser's localStorage).
 const LEADERBOARD_CONFIG = {
-    repo: '<owner>/Kahoot-Englisch', // used for global submission; auto-detected from *.github.io
-    token: ''                        // optional scoped PAT, e.g. 'github_pat_xxx'
+    supabaseUrl: '',  // e.g. 'https://abcd1234.supabase.co'
+    supabaseKey: '',  // anon/public key
+    table: 'leaderboard'
 };
 
 const questionsDiv = document.getElementById('questions');
@@ -335,25 +336,49 @@ function nthPrime(n) {
     return _primes[n - 1];
 }
 
-// Merge the repo leaderboard (leaderboard.json) with any locally-stored runs and
-// render the top entries into the given lists, with prime-numbered ranks.
+// Resolve the active leaderboard backend config (constant or runtime override).
+function lbConfig() {
+    return {
+        url: LEADERBOARD_CONFIG.supabaseUrl || localStorage.getItem('quizSupabaseUrl') || '',
+        key: LEADERBOARD_CONFIG.supabaseKey || localStorage.getItem('quizSupabaseKey') || ''
+    };
+}
+
+// Load the top entries from the shared Supabase table (worldwide, synced) and
+// render them into the menu and results lists with prime-numbered ranks. Falls
+// back to leaderboard.json + local runs when no backend is configured.
 async function loadAndRenderLeaderboard() {
     const username = getUsername();
     let entries = [];
-    try {
-        const res = await fetch('leaderboard.json', { cache: 'no-store' });
-        if (res.ok) {
-            const data = await res.json();
-            if (Array.isArray(data.entries)) entries = data.entries;
+    const { url, key } = lbConfig();
+
+    if (url && key) {
+        try {
+            const res = await fetch(
+                `${url}/rest/v1/${LEADERBOARD_CONFIG.table}` +
+                `?select=name,score,difficulty&order=score.desc&limit=10`,
+                { headers: { 'apikey': key, 'Authorization': 'Bearer ' + key } }
+            );
+            if (res.ok) entries = await res.json();
+        } catch (e) {
+            console.warn('Leaderboard load failed:', e);
         }
-    } catch (e) {
-        console.warn('Could not load leaderboard.json:', e);
     }
-    // Locally stored runs (used when no global token is configured).
-    try {
-        const local = JSON.parse(localStorage.getItem('quizLocalScores') || '[]');
-        if (Array.isArray(local)) entries = entries.concat(local);
-    } catch (e) { /* ignore */ }
+
+    // Fallback: repo seed file + this browser's local runs.
+    if (!Array.isArray(entries) || !entries.length) {
+        try {
+            const res = await fetch('leaderboard.json', { cache: 'no-store' });
+            if (res.ok) {
+                const data = await res.json();
+                if (Array.isArray(data.entries)) entries = data.entries;
+            }
+        } catch (e) { /* ignore */ }
+        try {
+            const local = JSON.parse(localStorage.getItem('quizLocalScores') || '[]');
+            if (Array.isArray(local)) entries = entries.concat(local);
+        } catch (e) { /* ignore */ }
+    }
 
     renderLeaderboardInto('menu-lb-list', 'menu-lb-best', entries, username);
     renderLeaderboardInto('lb-list', 'lb-best', entries, username);
@@ -382,41 +407,39 @@ function renderLeaderboardInto(listId, bestId, entries, username) {
     }
 }
 
-// Record a finished run: always store locally (instant feedback) and, if a GitHub
-// token is configured, dispatch the submit-score workflow to persist it globally.
+// Record a finished run. With a Supabase backend configured, the score is inserted
+// into the shared table so everyone sees it (worldwide sync). Otherwise it is kept
+// locally in this browser only.
 async function submitScore(score, difficulty) {
     const username = getUsername() || 'Anonymous';
     const entry = {
         name: username.slice(0, 20),
         score: Number(score) || 0,
-        difficulty: difficulty || 'mixed',
-        date: new Date().toISOString().slice(0, 10)
+        difficulty: difficulty || 'mixed'
     };
 
-    let local = [];
-    try { local = JSON.parse(localStorage.getItem('quizLocalScores') || '[]'); } catch (e) { /* ignore */ }
-    local.push(entry);
-    if (local.length > 50) local = local.slice(-50);
-    localStorage.setItem('quizLocalScores', JSON.stringify(local));
-
-    const token = LEADERBOARD_CONFIG.token || localStorage.getItem('quizLbToken') || '';
-    if (token) {
-        const repo = location.hostname.endsWith('.github.io')
-            ? location.hostname.split('.')[0] + '/Kahoot-Englisch'
-            : LEADERBOARD_CONFIG.repo;
+    const { url, key } = lbConfig();
+    if (url && key) {
         try {
-            await fetch(`https://api.github.com/repos/${repo}/dispatches`, {
+            await fetch(`${url}/rest/v1/${LEADERBOARD_CONFIG.table}`, {
                 method: 'POST',
                 headers: {
-                    'Authorization': 'Bearer ' + token,
-                    'Accept': 'application/vnd.github+json',
-                    'Content-Type': 'application/json'
+                    'apikey': key,
+                    'Authorization': 'Bearer ' + key,
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=minimal'
                 },
-                body: JSON.stringify({ event_type: 'submit-score', client_payload: entry })
+                body: JSON.stringify([entry])
             });
         } catch (e) {
             console.warn('Score submission failed:', e);
         }
+    } else {
+        let local = [];
+        try { local = JSON.parse(localStorage.getItem('quizLocalScores') || '[]'); } catch (e) { /* ignore */ }
+        local.push(entry);
+        if (local.length > 50) local = local.slice(-50);
+        localStorage.setItem('quizLocalScores', JSON.stringify(local));
     }
 
     await loadAndRenderLeaderboard();

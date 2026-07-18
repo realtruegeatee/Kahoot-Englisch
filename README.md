@@ -8,7 +8,7 @@ An interactive Kahoot-style quiz website for *The Curious Incident of the Dog in
 - **Timer system** with visual countdown
 - **Time-based scoring** — answer fast to earn up to 10 points; the longer you take, the fewer points you get
 - **Score tracking** with streak bonuses
-- **Leaderboard** with prime-numbered ranks (#2, #3, #5, #7, …), shown on the start screen. Scores are stored in `leaderboard.json` in this repo (like `quiz_data.json`); you pick a username on first visit.
+- **Leaderboard** with prime-numbered ranks (#2, #3, #5, #7, …), shown on the start screen. Scores sync worldwide across all devices via a shared Supabase table (local-only fallback if unconfigured); you pick a username on first visit.
 - **Lifelines** (Hint −5, 50/50 −10, Skip −15 points) — each costs points, so use them strategically
 - **Responsive design** for mobile and desktop
 - **Confetti animation** for high scores
@@ -38,28 +38,43 @@ The deployment workflow uses the official GitHub Pages Actions:
 - `actions/deploy-pages@v4` to publish it
 - Node.js 20 environment on `ubuntu-latest`
 
-## Leaderboard
+## Leaderboard (worldwide, synced)
 
-The leaderboard is backed by `leaderboard.json` in this repo (the same pattern as
-`quiz_data.json`). The app reads it and shows the top entries — with prime-numbered
-ranks — on the start screen and the results screen. On first visit you're asked for
-a username (stored in `localStorage`); use **Change name** on the start screen to edit it.
+Scores are stored in a shared **Supabase** Postgres table, so every visitor — on any
+device — sees the same ranks in near real time. The app talks to Supabase's REST API
+directly from the browser (no backend code, no build step). On first visit you're
+asked for a username (stored in `localStorage`); use **Change name** on the start
+screen to edit it. Ranks are prime numbers (#2, #3, #5, #7, …).
 
-**Submitting scores globally.** By default, a finished run is saved only in your own
-browser (`localStorage`) so you see your score immediately. To persist scores for
-everyone, give the app a scoped GitHub token so it can trigger the `submit-score`
-workflow, which appends the score to `leaderboard.json` and commits it (the Pages
-deploy then republishes):
+**Setup (free):**
 
-1. Create a fine-grained Personal Access Token with **Contents: Read/Write** and
-   **Actions: Read/Write** for this repo (or a classic PAT with `repo`).
-2. Set it in `script.js` → `LEADERBOARD_CONFIG.token`, or at runtime via
-   `localStorage['quizLbToken']` (e.g. from the browser console).
-3. Finish a quiz — the app dispatches `event_type: submit-score` with the score in
-   `client_payload`; the workflow writes it to `leaderboard.json` and pushes.
+1. Create a project at [supabase.com](https://supabase.com).
+2. Run this SQL in the Supabase SQL editor:
 
-> Note: a token pasted into client-side code is visible to anyone using the site,
-> so only do this on a repo you control, and use a token scoped to this repo only.
+   ```sql
+   create table if not exists public.leaderboard (
+     id bigint generated always as identity primary key,
+     name text not null,
+     score integer not null,
+     difficulty text default 'mixed',
+     created_at timestamptz default now()
+   );
+   alter table public.leaderboard enable row level security;
+   create policy "Public read"   on public.leaderboard for select using (true);
+   create policy "Public insert" on public.leaderboard for insert with check (true);
+   ```
+
+3. In **Project Settings → API**, copy the Project URL and the `anon` public key.
+4. Set them in `script.js` → `LEADERBOARD_CONFIG.supabaseUrl` / `supabaseKey`
+   (or at runtime via `localStorage['quizSupabaseUrl']` / `localStorage['quizSupabaseKey']`).
+
+The `anon` key is safe to expose — Row Level Security above controls access (public
+read + insert). For a production board you'd add rate limiting / validation and
+probably require a login.
+
+**Without Supabase configured**, the board falls back to a local-only mode: it reads
+the seeded `leaderboard.json` and stores your runs in `localStorage`, so the UI still
+works but scores are not shared with other devices.
 
 ## Development
 
