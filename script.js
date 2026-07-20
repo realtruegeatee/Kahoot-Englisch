@@ -635,30 +635,42 @@ function announce(message) {
     setTimeout(() => { el.textContent = message; }, 30);
 }
 
-// Theme toggle (persisted in localStorage)
-function toggleTheme() {
-    const root = document.documentElement;
-    const isDark = root.getAttribute('data-theme') === 'dark';
-    const next = isDark ? 'light' : 'dark';
-    if (next === 'dark') {
-        root.setAttribute('data-theme', 'dark');
-    } else {
-        root.removeAttribute('data-theme');
-    }
-    localStorage.setItem('theme', next);
-    const icon = document.getElementById('theme-icon');
-    if (icon) icon.textContent = next === 'dark' ? '☀️' : '🌙';
+// Theme handling: an explicit 'light' or 'dark' choice is stored in
+// localStorage; when nothing is stored we follow the OS preference via
+// prefers-color-scheme (a "system" theme) so the quiz matches the device.
+function systemPrefersDark() {
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
 }
 
-// Apply saved theme on load
-(function applySavedTheme() {
-    const saved = localStorage.getItem('theme');
+function applyTheme(theme) {
+    const isDark = theme === 'dark' || (theme !== 'light' && systemPrefersDark());
+    const root = document.documentElement;
+    if (isDark) root.setAttribute('data-theme', 'dark');
+    else root.removeAttribute('data-theme');
     const icon = document.getElementById('theme-icon');
-    if (saved === 'dark') {
-        document.documentElement.setAttribute('data-theme', 'dark');
-        if (icon) icon.textContent = '☀️';
-    }
+    if (icon) icon.textContent = isDark ? '☀️' : '🌙';
+}
+
+// Apply saved theme (or the system default) on load.
+(function applySavedTheme() {
+    applyTheme(localStorage.getItem('theme') || 'system');
 })();
+
+// Re-sync with the OS when the user hasn't picked an explicit theme.
+if (window.matchMedia) {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const onChange = () => { if (!localStorage.getItem('theme')) applyTheme('system'); };
+    if (mq.addEventListener) mq.addEventListener('change', onChange);
+    else if (mq.addListener) mq.addListener(onChange);
+}
+
+// Theme toggle (persisted in localStorage)
+function toggleTheme() {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const next = isDark ? 'light' : 'dark';
+    localStorage.setItem('theme', next);
+    applyTheme(next);
+}
 
 /* =========================================================
    Question Editor (saved to localStorage, no backend needed)
