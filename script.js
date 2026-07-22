@@ -635,7 +635,7 @@ function announce(message) {
     setTimeout(() => { el.textContent = message; }, 30);
 }
 
-// Theme handling: an explicit 'light' or 'dark' choice is stored in
+// Theme handling: an explicit 'light', 'dark', or 'claude' choice is stored in
 // localStorage; when nothing is stored we follow the OS preference via
 // prefers-color-scheme (a "system" theme) so the quiz matches the device.
 function systemPrefersDark() {
@@ -643,17 +643,30 @@ function systemPrefersDark() {
 }
 
 function applyTheme(theme) {
-    const isDark = theme === 'dark' || (theme !== 'light' && systemPrefersDark());
     const root = document.documentElement;
-    if (isDark) root.setAttribute('data-theme', 'dark');
-    else root.removeAttribute('data-theme');
     const icon = document.getElementById('theme-icon');
-    if (icon) icon.textContent = isDark ? '☀️' : '🌙';
+
+    // Remove all theme attributes first
+    root.removeAttribute('data-theme');
+
+    if (theme === 'claude') {
+        root.setAttribute('data-theme', 'claude');
+        if (icon) icon.textContent = '🧘';
+    } else if (theme === 'dark' || (theme !== 'light' && systemPrefersDark())) {
+        root.setAttribute('data-theme', 'dark');
+        if (icon) icon.textContent = '☀️';
+    } else {
+        if (icon) icon.textContent = '🌙';
+    }
+
+    // Save to localStorage
+    localStorage.setItem('theme', theme);
 }
 
 // Apply saved theme (or the system default) on load.
 (function applySavedTheme() {
-    applyTheme(localStorage.getItem('theme') || 'system');
+    const savedTheme = localStorage.getItem('theme') || 'system';
+    applyTheme(savedTheme);
 })();
 
 // Re-sync with the OS when the user hasn't picked an explicit theme.
@@ -664,12 +677,20 @@ if (window.matchMedia) {
     else if (mq.addListener) mq.addListener(onChange);
 }
 
-// Theme toggle (persisted in localStorage)
+// Theme toggle (persisted in localStorage) - cycles through light → dark → claude → light
 function toggleTheme() {
-    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-    const next = isDark ? 'light' : 'dark';
-    localStorage.setItem('theme', next);
-    applyTheme(next);
+    const currentTheme = localStorage.getItem('theme') || 'system';
+    let nextTheme;
+
+    if (currentTheme === 'claude') {
+        nextTheme = 'light';
+    } else if (currentTheme === 'dark' || (currentTheme === 'system' && systemPrefersDark())) {
+        nextTheme = 'claude';
+    } else {
+        nextTheme = 'dark';
+    }
+
+    applyTheme(nextTheme);
 }
 
 /* =========================================================
